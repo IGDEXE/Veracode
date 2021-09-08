@@ -1,6 +1,7 @@
-# SCA Agent based - Url
+# SCA Agent based - Analise de repositorio por Url
 function New-ScaScanUrl {
     param (
+        [parameter(position=0,Mandatory=$True)]
         $url
     )
     # Faz o download do agente
@@ -9,9 +10,10 @@ function New-ScaScanUrl {
     srcclr scan --url "$url"
 }
 
-# SCA Agent based - Repo
-function New-ScaScanRepo {
+# SCA Agent based - Analise para uma pasta ou arquivo especifico
+function New-ScaScan {
     param (
+        [parameter(position=0,Mandatory=$True)]
         $caminhoPasta
     )
     # Faz o download do agente
@@ -48,22 +50,23 @@ function Install-VeracodeWrapper {
     
 }
 
-# Funcao para validar os arquivos
-function Veracode-FileScan {
+# Funcao para fazer um scan num arquivo especifico
+function New-PipelineScan {
     # Define os parametros que serao utilizados
     param (
-        $arquivo,
+        [parameter(position=0,Mandatory=$True)]
         $veracodeID,
+        [parameter(position=1,Mandatory=$True)]
         $veracodeAPIkey,
-        $pastaferramenta
-
+        [parameter(position=2,Mandatory=$True)]
+        $arquivo
     )
     try {
         # Filtra os objetos
         $nomearquivo = $arquivo.name # Recebe o nome do arquivo, exemplo: Foto123.png
         $caminhoarquivo = $arquivo.fullname # Recebe o caminho do arquivo: C:/Fotos/Foto123.png
         # Scan
-        java -jar "$pastaferramenta/pipeline-scan.jar" -f $caminhoarquivo -vid $veracodeID -vkey $veracodeAPIkey # Faz a validação conforme as orientações do fabricante
+        java -jar "pipeline-scan.jar" -vid $veracodeID -vkey $veracodeAPIkey -f $caminhoarquivo # Faz a validação conforme as orientações do fabricante
     }
     catch {
         # Esse bloco é ativado no caso de algum problema ocorrer no uso dos comandos anteriores
@@ -106,8 +109,8 @@ function Install-PipeScan {
     }
 }
 
-# Pipeline Scan
-function Veracode-PipeScan {
+# Pipeline Scan em uma pasta
+function New-PipelineScanFolder {
     param (
         [parameter(position=0,Mandatory=$True)]
         $veracodeID,
@@ -122,6 +125,6 @@ function Veracode-PipeScan {
     # Faz a verificacao
     Clear-Host # Limpa a tela
     foreach ($arquivo in $arquivos) {
-        Veracode-FileScan $arquivo $veracodeID $veracodeAPIkey $pastaferramenta # Valida arquivo por arquivo
+        Veracode-FileScan $veracodeID $veracodeAPIkey $arquivo # Valida arquivo por arquivo
     }
 }
