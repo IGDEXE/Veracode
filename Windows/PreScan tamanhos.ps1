@@ -5,7 +5,7 @@ function Get-VeracodeAppSize {
         $veracodeAPIkey = "",
         $nomeProjeto = "",
         $caminhoArquivo = "",
-        $caminhoLOG = "$env:LOCALAPPDATA\$nomeProjeto.txt",
+        $caminhoLOG = "$env:LOCALAPPDATA\PreScan-Tamanhos.txt",
         $perfilValidacao = ""
     )
 
@@ -42,7 +42,7 @@ function Get-VeracodeAppSize {
                     break
                 } else {
                     $validacao = $true
-                    Write-Host "Validando se o Scan $numeroVersao já foi concluido"
+                    Write-Host "Validando se o PreScan $nomeProjeto já foi concluido"
                     Write-Host "Por favor aguarde"
                     Start-Sleep -s $contador
                     $hardcount += $contador
