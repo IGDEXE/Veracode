@@ -1,0 +1,71 @@
+# Definicao dos stages
+stages:
+    - packaging
+    - sast
+    - pipeline_scan
+
+variables:
+    APP_Profile: "GitLab.${CI_PROJECT_NAME}"
+    Caminho_Arquivo: "veracode.zip"
+
+# Cria o ZIP com os arquivos conforme a documentacao da Veracode
+# Doc: 
+packaging:
+    image: openjdk:8
+    stage: packaging
+    only:
+        - branches
+        - tags
+        - merge_requests
+    before_script:
+        - apt update && apt install -y zip
+    script:
+        - ls -lah
+    after_script:
+        - zip -r $Caminho_Arquivo . 
+    artifacts:
+        paths:
+            - $Caminho_Arquivo
+
+# Inicia a analise SAST por meio do Wrapper
+# Doc: 
+sast:
+    image: veracode/api-wrapper-java
+    stage: sast
+    script:
+        - >
+        - java -jar /opt/veracode/api-wrapper.jar
+          -action UploadAndScan
+          -vid "${VERACODE_API_ID}"
+          -vkey "${VERACODE_API_KEY}"
+          -appname $APP_Profile
+          -createprofile true
+          -autoscan true
+          -criticality VeryHigh
+          -filepath $Caminho_Arquivo
+          -version "${CI_JOB_ID}"
+        - sleep 2
+        - echo Finish scan
+    dependencies:
+        - packaging
+
+# Utiliza o Pipeline Scan para uma analise mais rapida e validar quebra por erros encontrados
+# Doc: 
+pipeline_scan:
+        image: openjdk:8
+        stage: pipeline_scan
+        dependencies:
+        - packaging
+        - sast
+        when: always
+        script:
+            - curl -O https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+            - unzip pipeline-scan-LATEST.zip pipeline-scan.jar
+            - java -jar pipeline-scan.jar
+                --veracode_api_id "${VERACODE_API_ID}"
+                --veracode_api_key "${VERACODE_API_KEY}"
+                --file "$Caminho_Arquivo"
+                --project_name "${CI_PROJECT_PATH}"
+                --project_url "${CI_REPOSITORY_URL}"
+                --project_ref "${CI_COMMIT_REF_NAME}"
+                --gl_issue_generation true
