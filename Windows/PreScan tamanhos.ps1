@@ -10,7 +10,7 @@ function Get-VeracodeAppSize {
     )
 
     # Configuracoes
-    $numeroVersao = Get-Date -Format hhmmssddMMyy
+    $numeroVersao = "$nomeProjeto." + (Get-Date -Format hhmmssddMMyy)
 
     # Recebe o App ID com base no nome da aplicacao dentro do Veracode
     [xml]$INFO = $(VeracodeAPI.exe -vid "$veracodeID" -vkey "$veracodeAPIkey" -action GetAppList | Select-String -Pattern $perfilValidacao)
