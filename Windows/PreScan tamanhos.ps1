@@ -9,25 +9,32 @@ function Get-VeracodeAppSize {
         $perfilValidacao = ""
     )
 
-    # Configuracoes
-    $numeroVersao = "$nomeProjeto." + (Get-Date -Format hhmmssddMMyy)
+    try {
+        # Configuracoes
+        $numeroVersao = "$nomeProjeto." + (Get-Date -Format hhmmssddMMyy)
 
-    # Recebe o App ID com base no nome da aplicacao dentro do Veracode
-    [xml]$INFO = $(VeracodeAPI.exe -vid "$veracodeID" -vkey "$veracodeAPIkey" -action GetAppList | Select-String -Pattern $perfilValidacao)
-    # Filtra o App ID
-    $appID = $INFO.app.app_id
+        # Recebe o App ID com base no nome da aplicacao dentro do Veracode
+        [xml]$INFO = $(VeracodeAPI.exe -vid "$veracodeID" -vkey "$veracodeAPIkey" -action GetAppList | Select-String -Pattern $perfilValidacao)
+        # Filtra o App ID
+        $appID = $INFO.app.app_id
 
 
-    # Deleta a ultima e cria uma nova build
-    VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action deletebuild -appid $appID
-    VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action createbuild -appid $appID -version $numeroVersao
+        # Deleta a ultima e cria uma nova build
+        VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action deletebuild -appid $appID
+        VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action createbuild -appid $appID -version $numeroVersao
 
-    # Faz o upload do arquivo
-    VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action uploadfile -appid "$appID" -filepath "$caminhoArquivo"
+        # Faz o upload do arquivo
+        VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action uploadfile -appid "$appID" -filepath "$caminhoArquivo"
 
-    # Faz o pre scan no perfil de validacao
-    VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action beginprescan -appid "$appID"
-
+        # Faz o pre scan no perfil de validacao
+        VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action beginprescan -appid "$appID"
+    }
+    catch {
+        $ErrorMessage = $_.Exception.Message # Recebe o erro
+        Write-Host "Erro ao receber as informações"
+        Write-Host "$ErrorMessage"
+    }
+    
     # Pega os resultados
     try {
         # Configuracoes do loop
