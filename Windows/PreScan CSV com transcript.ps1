@@ -17,7 +17,7 @@ foreach ($app in $Apps) {
     $caminho = $Apps.Caminho[$indice]
     # Faz o scan
     Get-VeracodeAppSize $veracodeID $veracodeAPIkey $NomeApp $caminho
-    Start-Sleep -s 10 # Aguarda 10 segundos entre cada execução
+    Start-Sleep -s 20 # Aguarda 20 segundos entre cada execução
     ## Incrementa o indice
     $indice++
 }
