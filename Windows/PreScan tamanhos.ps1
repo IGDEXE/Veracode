@@ -59,8 +59,9 @@ function Get-VeracodeAppSize {
             # Pega os dados do scan
             [xml]$preScanInfo = $(VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action getprescanresults -appid $appID)
             $tamanhos = $preScanInfo.prescanresults.module.size
+            $tamanhoTotal = Get-VeracodeModulesSum $tamanhos
             # Faz o log
-            Add-Content -Path $caminhoLOG -Value "Projeto: $nomeProjeto | Tamanho dos modulos: $tamanhos"
+            Add-Content -Path $caminhoLOG -Value "Projeto: $nomeProjeto | Tamanho dos modulos: $tamanhoTotal MBs"
 
         } else {
             Clear-Host
