@@ -20,3 +20,6 @@ Remove-Item "$caminhoDownload" # Remove o arquivo de download
 # Utilizacao das ferrementas:
 VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action UploadAndScan -appname "$NomeApp" -filepath "$caminhoArquivo" -version $numeroVersao # API Wrapper
 java -jar "pipeline-scan.jar" -vid $veracodeID -vkey $veracodeAPIkey -f $caminhoarquivo # Pipeline Scan
+
+
+$Env:SRCCLR_API_TOKEN = "Disponivel no portal da Veracode"

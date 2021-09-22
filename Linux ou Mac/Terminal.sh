@@ -13,7 +13,10 @@ curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
 unzip pipeline-scan-LATEST.zip
 java -jar pipeline-scan.jar -vid $veracodeID -vkey $veracodeAPIkey -f $zipArquivo
 
-# SCA
+# SCA Simples
+curl -sSL 'https://download.sourceclear.com/ci.sh' | bash -s – scan
+
+# SCA - Commit de atualização de versões
 curl -sSL 'https://download.sourceclear.com/ci.sh' | bash -s – scan --update-advisor --pull-request
 
 # Wrapper API
