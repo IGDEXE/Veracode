@@ -11,8 +11,8 @@ jobs:
 ​
     - stage: "Veracode SCA - Software Composition Analisys"
       name: "Veracode SCA - Software Composition Analisys"
-      script: 
-        - curl -sSL https://download.sourceclear.com/ci.sh | bash -s scan  --update-advisor || true
+      addons:
+        srcclr: true
     
     - stage: "Veracode SAST - Pipeline Scan"
       name: "Veracode SAST - Pipeline Scan"
