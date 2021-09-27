@@ -1,0 +1,37 @@
+language: java
+​
+env:
+  - DATE = `date + "%Y-%m-%d-%H%M"`
+​
+jobs:
+  inclue:
+    - stage: "Build Java app with Maven"
+      name: "build"
+      script: mvn clean package
+​
+    - stage: "Veracode SCA - Software Composition Analisys"
+      name: "Veracode SCA - Software Composition Analisys"
+      script: 
+        - curl -sSL https://download.sourceclear.com/ci.sh | bash -s scan  --update-advisor || true
+    
+    - stage: "Veracode SAST - Pipeline Scan"
+      name: "Veracode SAST - Pipeline Scan"
+      before_script:
+        - curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+        - unzip -o pipeline-scan-LATEST.zip
+      script:
+        - java -jar pipeline-scan.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -f target/verademo.war --issue_details true || true
+    
+    - stage: "Veracode SAST - Sandbox Scan"
+      name: "Veracode SAST - Sandbox Scan"
+      before_script:
+        - wget https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/$VERACODE_WRAPPER_VERSION/vosp-api-wrappers-java-$VERACODE_WRAPPER_VERSION.jar
+      script:
+        - java -jar vosp-api-wrappers-java-$VERACODE_WRAPPER_VERSION.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "Java-VeraDemo" -createprofile false -filepath target/verademo.war -createsandbox false -sandboxname "SANDBOX_2" -deleteincompletescan true -scanpollinginterval 60 -version "$TRAVIS_JOB_ID - $TRAVIS_JOB_NUMBER $DATE" -scantimeout 60 || true
+    
+    - stage: "Veracode SAST - Policy Scan"
+      name: "Veracode SAST - Policy Scan"
+      before_script:
+        - wget https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/$VERACODE_WRAPPER_VERSION/vosp-api-wrappers-java-$VERACODE_WRAPPER_VERSION.jar
+      script:
+        - java -jar vosp-api-wrappers-java-$VERACODE_WRAPPER_VERSION.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "Java-VeraDemo" -createprofile false -filepath target/verademo.war -deleteincompletescan true -scanpollinginterval 60 -version "$TRAVIS_JOB_ID - $TRAVIS_JOB_NUMBER $DATE" -scantimeout 60
