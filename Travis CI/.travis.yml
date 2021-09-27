@@ -27,11 +27,11 @@ jobs:
       before_script:
         - curl -L -o VeracodeJavaAPI.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/20.12.7.3/vosp-api-wrappers-java-20.12.7.3.jar
       script:
-        - java -jar VeracodeJavaAPI.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "TravisCi-VeraDemo" -createprofile true -filepath target/verademo.war -createsandbox false -sandboxname "HMG" -deleteincompletescan true -scanpollinginterval 60 -version "$TRAVIS_JOB_ID - $TRAVIS_JOB_NUMBER $DATE" -scantimeout 60 || true
+        - java -jar VeracodeJavaAPI.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "TravisCi-VeraDemo" -createprofile true -filepath target/verademo.war -createsandbox true -sandboxname "HMG" -version "$TRAVIS_JOB_ID - $TRAVIS_JOB_NUMBER $DATE" -scantimeout 60 || true
     
     - stage: "Veracode SAST - Policy Scan"
       name: "Veracode SAST - Policy Scan"
       before_script:
         - curl -L -o VeracodeJavaAPI.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/20.12.7.3/vosp-api-wrappers-java-20.12.7.3.jar
       script:
-        - java -jar VeracodeJavaAPI.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "TravisCi-VeraDemo" -createprofile true -filepath target/verademo.war -deleteincompletescan true -scanpollinginterval 60 -version "$TRAVIS_JOB_ID - $TRAVIS_JOB_NUMBER $DATE" -scantimeout 60
+        - java -jar VeracodeJavaAPI.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "TravisCi-VeraDemo" -createprofile true -filepath target/verademo.war -version "$TRAVIS_JOB_ID - $TRAVIS_JOB_NUMBER $DATE" -scantimeout 60
