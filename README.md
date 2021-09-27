@@ -1,10 +1,10 @@
-## Veracode_Exemplos
+## Veracode Exemplos
 Exemplos de codigo para implementações Veracode em algumas plataforma <br>
 A plataforma consegue ser utilizada em qualquer sistema ou ferramenta de CI/CD que consiga rodar comandos shell/Powershell e rodar arquivos EXE ou JAR <br>
 
-# Guia rapido Veracode
+# Guia rápido Veracode
 Algumas das tecnologias suportadas:
-- SAST
+- [SAST](https://help.veracode.com/r/c_comp_quickref)
 <p align="left">
     <img src="https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=java&logoColor=white" />
     <img src="https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=c-sharp&logoColor=white" />
@@ -23,7 +23,8 @@ Algumas das tecnologias suportadas:
     <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
     <img src="https://img.shields.io/badge/Scala-DC322F?style=for-the-badge&logo=scala&logoColor=white" />
  </p>
-- IDE Scan
+ 
+- [IDE Scan](https://help.veracode.com/r/c_master_greenlight)
 <p align="left">
     <img src="https://img.shields.io/badge/Visual_Studio-5C2D91?style=for-the-badge&logo=visual%20studio&logoColor=white" />
     <img src="https://img.shields.io/badge/Visual_Studio_Code-0078D4?style=for-the-badge&logo=visual%20studio%20code&logoColor=white" />
@@ -32,5 +33,5 @@ Algumas das tecnologias suportadas:
     <img src="https://img.shields.io/badge/Android_Studio-3DDC84?style=for-the-badge&logo=android-studio&logoColor=white" />
  </p>
 
-Para mais detalhes consulte a documentação completa em: [Veracode Help](https://help.veracode.com/r/c_comp_quickref) <br>
+Para mais detalhes consulte a [documentação completa](https://help.veracode.com/) <br>
 É recomendado a leitura antes de fazer qualquer implementação, para saber exatamente o que precisa enviar para analise
