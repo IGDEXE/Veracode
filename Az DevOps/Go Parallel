@@ -1,0 +1,161 @@
+# Exemplo de Pipeline com equipes diferentes e analise simultanea
+# Os resultados são importados para o Boards tambem separados, utilizando uma TAG de identificação
+# Para testa, recomendo utilizar o projeto: 
+# https://github.com/IGDEXE/Vulnerability-goapp 
+
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  veracodeAppProfile: AzDevOps.$(Build.DefinitionName)
+  caminhoPacote: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+
+stages:
+- stage: Build
+  displayName: Build
+  jobs:
+  - job: Build
+    steps: 
+    - task: GoTool@0
+      inputs:
+        version: '1.12'
+      displayName: 'Go Install'
+
+    - task: GoTool@0
+      inputs:
+        version: '1.12'
+      displayName: 'Go Install'
+
+    - script: |
+        ls
+        go get all
+        go mod download
+        go mod vendor
+      displayName: 'Go Build'
+    
+    - task: CopyFiles@2
+      inputs:
+        Contents: '**'
+        TargetFolder: 'App'
+      
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'App'
+        includeRootFolder: true
+        archiveType: 'zip'
+        archiveFile: '$(caminhoPacote)'
+        replaceExistingArchive: true
+      displayName: 'Criando pacote para analise'
+      
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(caminhoPacote)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+      
+- stage: TimeA
+  displayName: Time A
+  dependsOn: Build
+  jobs:
+  - job: SCA
+    displayName: 'Veracode SCA'
+    steps:
+    - task: CmdLine@2
+      inputs:
+        script: |
+          export SRCCLR_SCM_NAME=$(veracodeAppProfile)
+          curl -sSL https://download.sourceclear.com/ci.sh | bash -s – scan --update-advisor --allow-dirty
+      displayName: 'Resultados SCA'
+      continueOnError: true
+      
+  - job: SAST
+    displayName: 'Veracode SAST'
+    steps:
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Carregando arquivos'
+    - task: Veracode@3
+      inputs:
+        ConnectionDetailsSelection: 'Endpoint'
+        AnalysisService: 'Veracode'
+        veracodeAppProfile: '$(veracodeAppProfile)'
+        version: '$(build.buildNumber)'
+        filepath: '$(System.ArtifactsDirectory)'
+        sandboxName: '$(System.StageDisplayName)'
+        createSandBox: true
+        createProfile: true
+        importResults: true
+        maximumWaitTime: '360'
+      displayName: 'Fazendo a analise'
+
+    - task: Veracode Flaw Importer@3
+      inputs:
+        ConnectionDetailsSelection: 'Endpoint'
+        AnalysisService: 'Veracode'
+        veracodeAppProfile: '$(veracodeAppProfile)'
+        sandboxName: '$(System.StageDisplayName)'
+        importType: 'All Unmitigated Flaws Violating Policy'
+        workItemType: 'Issue'
+        area: '$(system.teamProject)'
+        addCustomTag: '$(System.StageDisplayName)'
+        flawImportLimit: '1000'
+      displayName: 'Importando falhas'
+
+- stage: TimeB
+  displayName: Time B
+  dependsOn: Build
+  jobs:
+  - job: SCA
+    displayName: 'Veracode SCA'
+    steps:
+    - task: CmdLine@2
+      inputs:
+        script: |
+          export SRCCLR_SCM_NAME=$(veracodeAppProfile)
+          curl -sSL https://download.sourceclear.com/ci.sh | bash -s – scan --update-advisor --allow-dirty
+      displayName: 'Resultados SCA'
+      continueOnError: true
+      
+  - job: SAST
+    displayName: 'Veracode SAST'
+    steps:
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Carregando arquivos'
+    - task: Veracode@3
+      inputs:
+        ConnectionDetailsSelection: 'Endpoint'
+        AnalysisService: 'Veracode'
+        veracodeAppProfile: '$(veracodeAppProfile)'
+        version: '$(build.buildNumber)'
+        filepath: '$(System.ArtifactsDirectory)'
+        sandboxName: '$(System.StageDisplayName)'
+        createSandBox: true
+        createProfile: true
+        importResults: true
+        maximumWaitTime: '360'
+      displayName: 'Fazendo a analise'
+
+    - task: Veracode Flaw Importer@3
+      inputs:
+        ConnectionDetailsSelection: 'Endpoint'
+        AnalysisService: 'Veracode'
+        veracodeAppProfile: '$(veracodeAppProfile)'
+        sandboxName: '$(System.StageDisplayName)'
+        importType: 'All Unmitigated Flaws Violating Policy'
+        workItemType: 'Issue'
+        area: '$(system.teamProject)'
+        addCustomTag: '$(System.StageDisplayName)'
+        flawImportLimit: '1000'
+      displayName: 'Importando falhas'
