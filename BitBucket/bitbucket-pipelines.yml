@@ -1,0 +1,30 @@
+# Para testar, recomendo a utilização do projeto DVWA
+# Disponivel em: https://github.com/IGDEXE/DVWA
+image: php:7.1.1
+
+pipelines:
+  default:
+    - parallel:
+        - step:
+                name: Veracode SCA
+                image: composer:2.0
+                script:
+                  - curl -sSL https://download.sourceclear.com/ci.sh | sh
+        - step:
+                name: Veracode SAST
+                image: gradle:6.6.0
+                script:
+                  - apt-get update && apt-get install -y zip
+                  - zip -r pacoteVeracode.zip .
+                  - curl -o veracode-wrapper.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/21.2.7.4/vosp-api-wrappers-java-21.2.7.4.jar
+                  - java -jar veracode-wrapper.jar -vid $VERACODE_API_ID -vkey $VERACODE_API_KEY -action uploadandscan -appname BitBucket-$BITBUCKET_REPO_FULL_NAME -createprofile true -scantimeout 60 -version $BITBUCKET_BUILD_NUMBER -filepath pacoteVeracode.zip
+        - step:
+                name: Veracode Pipeline
+                image: gradle:6.6.0
+                script:
+                  - apt-get update && apt-get install -y zip
+                  - apt-get update && apt-get install -y unzip
+                  - zip -r pacoteVeracode.zip .
+                  - curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+                  - unzip -o pipeline-scan-LATEST.zip
+                  - java -jar pipeline-scan.jar -vid $VERACODE_API_ID -vkey $VERACODE_API_KEY -f pacoteVeracode.zip
