@@ -13,7 +13,7 @@ pipelines:
     
     - parallel:
       - step:
-          name: Veracode Pipeline Scan
+          name: Pipeline Scan
           image: veracode/pipeline-scan
           script:
             - java -jar /opt/veracode/pipeline-scan.jar
@@ -22,11 +22,9 @@ pipelines:
               --file target/verademo.war
               --timeout 45
               --project_name "BitBucket-$BITBUCKET_REPO_FULL_NAME"
-          after-script:
-            - echo "Pipeline Scan done, see your results!"
 
       - step:
-          name: Veracode Pipeline Scan - Details
+          name: Pipeline Scan - Details
           image: veracode/pipeline-scan
           script:
             - java -jar /opt/veracode/pipeline-scan.jar
@@ -36,19 +34,15 @@ pipelines:
               --timeout 45
               --issue_details true
               --project_name "BitBucket-$BITBUCKET_REPO_FULL_NAME"
-          after-script:
-            - echo "Pipeline Scan done, see your results!"
 
       - step:
           name: Veracode Software Composition Analysis (SCA)
           image: maven:3.8.1-jdk-11
           script:
             - curl -sSL https://download.sourceclear.com/ci.sh | bash -s scan --update-advisor
-          after-script:
-            - echo "Software Composition Analysis done! See the details results in Veracode Platform"
 
       - step:
-          name: Veracode SAST - Sandbox Scan
+          name: SAST - Sandbox HMG
           image: veracode/api-wrapper-java
           script:
             - echo "Creating and submiting the build of application to Veracode security analysis in a sandbox enviroment"
@@ -62,12 +56,10 @@ pipelines:
               -createsandbox true
               -filepath target/verademo.war  
               -scantimeout 30
-              -version "Build Number $BITBUCKET_BUILD_NUMBER commit $BITBUCKET_COMMIT"
-          after-script:
-            - echo "Application artifact sent to Veracode sucessfuly!"
+              -version "$BITBUCKET_BUILD_NUMBER"
 
       - step:
-          name: Veracode SAST - Policy Scan
+          name: SAST - PRD
           image: veracode/api-wrapper-java
           script:
             - echo "Creating and submiting the build of application to Veracode security analysis"
@@ -81,6 +73,4 @@ pipelines:
               -vkey "${VERACODE_KEY}"
               -filepath target/verademo.war 
               -scantimeout 30
-              -version "Build Number $BITBUCKET_BUILD_NUMBER commit $BITBUCKET_COMMIT"
-          after-script:
-            - echo "Application artifact sent to Veracode sucessfuly!"
+              -version "$BITBUCKET_BUILD_NUMBER"
