@@ -1,0 +1,109 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+
+# Orbs are reusable packages of CircleCI configuration that you may share across projects, enabling you to create encapsulated, parameterized commands, jobs, and executors that can be used across multiple projects.
+# See: https://circleci.com/docs/2.0/orb-intro/
+orbs:
+  ruby: circleci/ruby@0.1.2
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  build:
+    docker:
+      - image: circleci/ruby:2.6.5
+    executor: ruby/default
+    steps:
+      - checkout
+      - run:
+          name: install gems
+          command: |
+            bundle -v
+
+            bundle install --without development test
+            bundle update veracode
+      - ruby/bundle-install
+      - run:
+          name: build rails
+          command: |
+            veracode prepare -v
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - tmp
+            - ./
+
+  veracode_sast_pipeline_scan:
+    docker: 
+      - image: veracode/pipeline-scan:latest
+    working_directory: ./
+    steps:
+      # get the files from the previous job
+      - attach_workspace:
+          at: ./
+      - run:
+         name: "Run Veracode Pipeline Scan and create a baseline"
+         command: |
+           cp -R app/assets/javascripts .
+           zip -r upload.zip javascripts
+           java -jar /opt/veracode/pipeline-scan.jar -vid $VID -vkey $VKEY -f upload.zip --json_output_file="baseline.json"
+
+  veracode_sast_sandbox_scan:
+    docker:
+      - image: veracode/api-wrapper-java:latest
+    working_directory: ~/tmp
+    steps:
+      - attach_workspace:
+          at: ./
+      - run:
+          name: "Run Veracode SAST Sandbox Scan"
+          command: java -jar /opt/veracode/api-wrapper.jar 
+              -vid $VID
+              -vkey $VKEY
+              -action uploadandscan 
+              -appname "railsgoat-demo"
+              -createprofile false
+              -version CircleCI-$CIRCLE_JOB-$CIRCLE_BUILD_NUM 
+              -filepath tmp/
+              -createsandbox false
+              -sandboxname "SANDBOX_1" 
+              -deleteincompletescan true 
+
+  veracode_sast_policy_scan:
+    docker:
+      - image: veracode/api-wrapper-java:latest
+    working_directory: ~/tmp
+    steps:
+      - attach_workspace:
+          at: ./
+      - run:
+          name: "Run Veracode SAST Policy Scan"
+          command: java -jar /opt/veracode/api-wrapper.jar 
+              -vid $VID
+              -vkey $VKEY
+              -action uploadandscan 
+              -appname "railsgoat-demo"
+              -createprofile false
+              -version CircleCI-$CIRCLE_JOB-$CIRCLE_BUILD_NUM 
+              -filepath tmp/ 
+              -deleteincompletescan true 
+              -scanpollinginterval 60
+              -scantimeout 60
+
+# Invoke jobs via workflows
+# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
+workflows:
+  sample: # This is the name of the workflow, feel free to change it to better match your workflow.
+    # Inside the workflow, you define the jobs you want to run.
+    jobs:
+      - build
+      - veracode_sast_pipeline_scan:
+            requires:
+              - build
+      - veracode_sast_sandbox_scan:
+            requires:
+              - build
+      - veracode_sast_policy_scan:
+            requires:
+              - build

@@ -11,6 +11,18 @@ $listaSB = "SB_Dev00", "SB_Dev01", "SB_Dev02", "SB_Dev03", "SB_Dev04", "SB_Dev05
 # Filtra o App ID
 $VeracodeAppID = $INFO.app.app_id
 
+# Verifica se a lista de SBs já existe
+[xml]$INFO = $(.\VeracodeAPI.exe -vid "$veracodeID" -vkey "$veracodeAPIkey" -action getsandboxlist -appid "$VeracodeAppID")
+$nomeSBs = $INFO.sandboxlist.sandbox.sandbox_name
+foreach ($SB in $listaSB) {
+    # Compara com as SBs existentes
+    if ($SB -notin $nomeSBs) {
+        Write-Host "$SB não está na listagem"
+        .\VeracodeAPI.exe -vid "$veracodeID" -vkey "$veracodeAPIkey" -action createsandbox -appid "$VeracodeAppID" -sandboxname "$SB"
+        Write-Host "$SB foi criada"
+    }
+}
+
 # Faz o scan na Sandbox selecionada
 do {
     foreach ($sbDisponivel in $listaSB) {
