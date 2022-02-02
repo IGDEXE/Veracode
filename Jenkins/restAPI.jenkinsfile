@@ -26,17 +26,7 @@ pipeline {
         }
         stage('SAST REST API') {
             steps {
-                sh '''
-                # Configuracoes de uso
-                veracodeAppName="${VeracodeProfile}"
-                CaminhoArquivo="${CaminhoArquivo}"
-                VERACODE_ID="${VeracodeID}"
-                VERACODE_KEY="${VeracodeKey}"
-
-                # Feito com base no script disponivel em:
-                # https://github.com/christyson/Veracode-Upload-and-Scan-Shell-Script/blob/master/veracodeuploadandscan.sh
-
-
+                sh """
                 # Funcao para autenticar
                 aut_Veracode () {
                     # Entrada de dados para a criacao do HMAC Header
@@ -85,7 +75,7 @@ pipeline {
                 echo "   "
                 echo "Iniciando o scan no perfil: $veracodeAppName ID: $AppID"
                 curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true"
-                '''
+                """
             }
         }
     }
