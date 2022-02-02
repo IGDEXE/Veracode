@@ -1,9 +1,15 @@
+# Configuracoes de uso
+veracodeAppName=""
+CaminhoArquivo=""
+VERACODE_ID=""
+VERACODE_KEY=""
+
+# Feito com base no script disponivel em:
+# https://github.com/christyson/Veracode-Upload-and-Scan-Shell-Script/blob/master/veracodeuploadandscan.sh
+
+
 # Funcao para autenticar
 aut_Veracode () {
-    # Configuracoes
-    # Credenciais Veracode
-    VERACODE_ID=""
-    VERACODE_KEY=""
     # Entrada de dados para a criacao do HMAC Header
     URLPATH=$1
     METHOD=$2
@@ -19,9 +25,22 @@ aut_Veracode () {
     VERACODE_AUTH_HEADER="VERACODE-HMAC-SHA-256 id=$VERACODE_ID,ts=$TS,nonce=$NONCE,sig=$signature"
 }
 
-# Configuracoes de uso
-AppID=""
-CaminhoArquivo=""
+# Pega a listagem de Apps
+URLPATH=/api/5.0/getapplist.do
+METHOD=GET
+aut_Veracode $URLPATH $METHOD
+curl -s -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -o applist.xml
+
+# Obtem o App ID
+while read -r line
+do
+    app_name=$(echo $line | grep -Po 'app_name="\K.*?(?=")')
+    AppID=$(echo $line | grep -Po 'app_id="\K.*?(?=")')
+    if [ "$app_name" = "$veracodeAppName" ]; then 
+    break
+    fi
+done < <(grep $veracodeAppName applist.xml)
+
 
 # Faz o Upload do arquivo
 URLPATH=/api/5.0/uploadfile.do
@@ -34,5 +53,6 @@ curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscente
 URLPATH=/api/5.0/beginprescan.do
 METHOD=POST
 aut_Veracode $URLPATH $METHOD
-echo "\n\nIniciando o scan no perfil: $AppID"
+echo "   "
+echo "Iniciando o scan no perfil: $veracodeAppName ID: $AppID"
 curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true"
