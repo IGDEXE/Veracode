@@ -1,7 +1,4 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
-
-name: Node.js CI
+name: NodeJS
 
 on:
   push:
@@ -29,19 +26,16 @@ jobs:
           path: .
       
       - name: Veracode REST API
+        env:
+          VERACODE_ID: ${{ secrets.VID }} # Lembrar de criar as credenciais no Secrets
+          VERACODE_KEY: ${{ secrets.VKEY }}
+          veracodeAppName: Github Actions - ${{ github.repository }}
+          CaminhoArquivo: './veracode.zip'
         run: |
-          # Configuracoes de uso
-          veracodeAppName="Jenkins.JS"
-          CaminhoArquivo="./veracode.zip"
-          VERACODE_ID=${{ secrets.VID }}
-          VERACODE_KEY=${{ secrets.VKEY }}
-          # Funcao para autenticar
           aut_Veracode () {
-              # Entrada de dados para a criacao do HMAC Header
               URLPATH=$1
               METHOD=$2
 
-              # Faz a criacao
               NONCE="$(cat /dev/random | xxd -p | head -c 32)"
               TS="$(($(date +%s%N)/1000))"
               encryptedNonce=$(echo "$NONCE" | xxd -r -p | openssl dgst -sha256 -mac HMAC -macopt hexkey:$VERACODE_KEY | cut -d ' ' -f 2)
@@ -52,13 +46,11 @@ jobs:
               VERACODE_AUTH_HEADER="VERACODE-HMAC-SHA-256 id=$VERACODE_ID,ts=$TS,nonce=$NONCE,sig=$signature"
           }
 
-          # Pega a listagem de Apps
           URLPATH=/api/5.0/getapplist.do
           METHOD=GET
           aut_Veracode $URLPATH $METHOD
           curl -s -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -o applist.xml
 
-          # Obtem o App ID
           while read -r line
           do
               app_name=$(echo $line | grep -Po 'app_name="\K.*?(?=")')
@@ -69,14 +61,12 @@ jobs:
           done < <(grep $veracodeAppName applist.xml)
 
 
-          # Faz o Upload do arquivo
           URLPATH=/api/5.0/uploadfile.do
           METHOD=POST
           aut_Veracode $URLPATH $METHOD
           echo "Fazendo o Upload do arquivo: $CaminhoArquivo"
           curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "file=@$CaminhoArquivo"
 
-          # Inicia o scan
           URLPATH=/api/5.0/beginprescan.do
           METHOD=POST
           aut_Veracode $URLPATH $METHOD
