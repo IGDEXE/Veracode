@@ -74,3 +74,4 @@ steps:
       echo "   "
       echo "Iniciando o scan no perfil: $(veracodeAppProfile) ID: $AppID"
       curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true"
+  displayName: 'Veracode REST API'
