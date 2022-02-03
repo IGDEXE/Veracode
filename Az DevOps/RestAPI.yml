@@ -1,3 +1,7 @@
+# Antes de começar:
+# Lembre-se de configurar as credenciais da Veracode em variaveis de ambientes: VERACODE_ID e VERACODE_KEY
+# Nessa versão, não temos uma criação automatica de perfis, então o veracodeAppProfile deve existir na plataforma antes de utilizar
+
 trigger:
 - master
 
