@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto8
+  build:
+    commands:
+      - mvn compile package
+  post_build:
+    commands:
+      - echo Veracode SAST
+      - curl -L -o VeracodeJavaAPI.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/20.12.7.3/vosp-api-wrappers-java-20.12.7.3.jar
+      - java -jar VeracodeJavaAPI.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "AWS Codebuild - VeraDemo" -createprofile true -filepath target/verademo.war -version $(date +%Y-%m-%d-%H:%M)
+      - echo Veracode SCA
+      - curl -sSL https://download.sourceclear.com/ci.sh | bash -s – scan --update-advisor --allow-dirty
+      - echo Veracode Pipeline Scan
+      - curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+      - unzip pipeline-scan-LATEST.zip
+      - java -jar pipeline-scan.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -f target/verademo.war --issue_details true 
+artifacts:
+  files:
+    - target/verademo.war
+    - appspec.yml
+  discard-paths: yes
