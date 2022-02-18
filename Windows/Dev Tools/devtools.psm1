@@ -7,7 +7,7 @@ function New-VeracodeCredentials {
         $veracodeAPIkey
     )
     # Faz a criação do arquivo
-    $caminhoArquivo = "C:\Users\$env:UserName\.veracode\credentials"
+    $caminhoArquivo = "$env:USERPROFILE\.veracode\credentials"
     $arquivoCredenciais = "[default]","veracode_api_key_id = $veracodeID","veracode_api_key_secret = $veracodeAPIkey"
     Add-Content -Path $caminhoArquivo -Value $arquivoCredenciais
 }
@@ -101,4 +101,101 @@ function New-SAST {
     $veracodeAPIkey = $veracodeCredenciais[1]
     # Faz o scan
     VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action UploadAndScan -appname "$AppProfile" -filepath "$caminhoArquivo" -version $numeroVersao
+}
+
+# Instalar Veracode Wrapper
+function Install-VeracodeWrapper {
+    # Configuracoes
+    $urlDownloadAPI = "https://tools.veracode.com/integrations/API-Wrappers/C%23/bin/VeracodeC%23API.zip"
+    $pastaInstalacao = "$env:USERPROFILE\.veracode\Tools"
+
+    Clear-Host
+    try {
+    # Faz o download
+        Write-Host "Fazendo o download da ferramenta"
+        Invoke-WebRequest -Uri "$urlDownloadAPI" -OutFile "$env:LOCALAPPDATA/VeracodeAPI.zip"
+        # Descompacta o arquivo
+        Write-Host "Descompactando.."
+        Expand-Archive -Path "$env:LOCALAPPDATA/VeracodeAPI.zip" -DestinationPath "$pastaInstalacao" -Force
+        # Altera o nome do arquivo
+        Rename-Item -Path "$pastaInstalacao/VeracodeC#API.exe" -NewName "$pastaInstalacao/VeracodeAPI.exe"
+        # Adiciona o EXE ao caminho do Path do sistema
+        Write-Host "Adicionando ao Path do sistema"
+        [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$pastaInstalacao")
+        Write-Host "Procedimento de configuracao concluido" 
+    }
+    catch {
+        $ErrorMessage = $_.Exception.Message # Recebe o erro
+        Write-Host "Erro ao fazer a configuracao da API"
+        Write-Host "$ErrorMessage"
+    }
+    
+}
+
+# Funcao para validar se o Wrapper esta configurado
+function Validar-VeracodeWrapper {
+    $validador = Test-Path VeracodeAPI.exe
+    if ($validador -eq "False") {
+        Install-VeracodeWrapper
+    }
+}
+
+# Funcao para excluir App Profiles
+function Delete-VeracodeAppProfile {
+    param (
+        $appName
+    )
+    
+    # Recebe as credenciais
+    $veracodeCredenciais = Get-VeracodeCredentials
+    $veracodeID = $veracodeCredenciais[0]
+    $veracodeAPIkey = $veracodeCredenciais[1]
+
+    # Valida se Wrapper ja esta configurado
+    Validar-VeracodeWrapper
+
+    try {
+        # Recebe o App ID com base no nome da aplicacao dentro do Veracode
+        [xml]$INFO = $(VeracodeAPI.exe -vid "$veracodeID" -vkey "$veracodeAPIkey" -action GetAppList | Select-String -Pattern $appName)
+        # Filtra o App ID
+        $appID = $INFO.app.app_id
+
+        # Remove o perfil informado
+        Write-Host "Removendo perfil: $appName"
+        [xml]$Status = VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action deleteapp -appid "$appID"
+
+        # Faz a validacao
+        $resultado = $status.deleteapp.result
+        if ($resultado -eq "success") {
+            Write-Host "O perfil $appName foi removido com sucesso"
+        } else {
+            Write-Host "Erro ao deletar o perfil: $appName"
+            Write-Host $Status
+        }
+    }
+    catch {
+        $ErrorMessage = $_.Exception.Message # Recebe o erro
+        Write-Host "Erro ao deletar o perfil: $appName"
+        Write-Host "$ErrorMessage"
+    }
+}
+
+# Funcao para listar todos os Apps
+function Get-AllVeracodeProfiles {
+    # Recebe as credenciais
+    $veracodeCredenciais = Get-VeracodeCredentials
+    $veracodeID = $veracodeCredenciais[0]
+    $veracodeAPIkey = $veracodeCredenciais[1]
+
+    # Valida se Wrapper ja esta configurado
+    Validar-VeracodeWrapper
+
+    # Recebe o XML dos perfis
+    [xml]$INFO = $(VeracodeAPI.exe -vid "$veracodeID" -vkey "$veracodeAPIkey" -action getapplist)
+
+    # Filtra os nomes dos perfis
+    $nomesAppProfile = $INFO.applist.app.app_name
+
+    # Retorna a lista de perfis
+    return $nomesAppProfile
 }
