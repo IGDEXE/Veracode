@@ -6,8 +6,15 @@ function New-VeracodeCredentials {
         [parameter(position=1,Mandatory=$True)]
         $veracodeAPIkey
     )
+    # Valida se a pasta da Veracode existe
+    $pastaferramenta = "$env:USERPROFILE\.veracode\"
+    $existe = Test-Path -Path "$pastaferramenta"
+    if ($Existe -eq $false) {
+        # Cria a pasta
+        New-Item -ItemType "directory" -Path "$pastaferramenta"
+    }
     # Faz a criação do arquivo
-    $caminhoArquivo = "$env:USERPROFILE\.veracode\credentials"
+    $caminhoArquivo = "$pastaferramenta\credentials"
     $arquivoCredenciais = "[default]","veracode_api_key_id = $veracodeID","veracode_api_key_secret = $veracodeAPIkey"
     Add-Content -Path $caminhoArquivo -Value $arquivoCredenciais
 }
