@@ -137,7 +137,7 @@ function New-PipelineScan {
         $veracodeID = $veracodeCredenciais[0]
         $veracodeAPIkey = $veracodeCredenciais[1]
         # Scan
-        java -jar "pipeline-scan.jar" -vid $veracodeID -vkey $veracodeAPIkey -f $caminhoarquivo # Faz a validação conforme as orientações do fabricante
+        java -jar "pipeline-scan.jar" -vid $veracodeID -vkey $veracodeAPIkey -f $caminhoarquivo --issue_details true # Faz a validação conforme as orientações do fabricante
     }
     catch {
         # Recebendo o erro e exibindo ele, parando a execução

@@ -6,6 +6,7 @@ pipeline {
         VeracodeKey    = ''
         VeracodeProfile = 'Jenkins.JS'
         SRCCLR_API_TOKEN = ''
+        CaminhoPacote = 'pacoteVeracode.zip'
     }
 
     stages {
@@ -23,13 +24,13 @@ pipeline {
         }
         stage('Archive') {
             steps {
-                zip archive: true, dir: '', glob: '', zipFile: 'pacoteVeracode.zip'
+                zip archive: true, dir: '', glob: '', zipFile: '${CaminhoPacote}'
             }
         }
         stage('SAST Upload') {
             steps {
                 sh 'curl -o veracode-wrapper.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/21.2.7.4/vosp-api-wrappers-java-21.2.7.4.jar'
-                sh 'java -jar veracode-wrapper.jar -vid ${VeracodeID} -vkey ${VeracodeKey} -action uploadandscan -appname ${VeracodeProfile} -createprofile true  -version $(date +%H%M%s%d%m%y) -filepath pacoteVeracode.zip'
+                sh 'java -jar veracode-wrapper.jar -vid ${VeracodeID} -vkey ${VeracodeKey} -action uploadandscan -appname ${VeracodeProfile} -createprofile true  -version $(date +%H%M%s%d%m%y) -filepath ${CaminhoPacote}'
             }
         }
         stage('SCA') {
@@ -41,7 +42,7 @@ pipeline {
             steps {
                 sh 'curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip'
                 unzip zipFile: 'pipeline-scan-LATEST.zip', dir: ''
-                sh 'java -jar pipeline-scan.jar -vid ${VeracodeID} -vkey ${VeracodeKey} -f pacoteVeracode.zip'
+                sh 'java -jar pipeline-scan.jar -vid ${VeracodeID} -vkey ${VeracodeKey} -f ${CaminhoPacote}'
             }
         }
     }
