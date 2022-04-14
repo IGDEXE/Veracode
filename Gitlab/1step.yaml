@@ -1,0 +1,37 @@
+# Definicao dos stages
+stages:
+    - Veracode
+
+variables:
+    APP_Profile: "GitLab.${CI_PROJECT_NAME}"
+    Caminho_Arquivo: "veracode.zip"
+
+Veracode:
+    image: veracode/api-wrapper-java
+    stage: Veracode
+    script:
+        - >
+        - echo ZIP Files
+        - zip -o $Caminho_Arquivo *
+        - echo SAST
+        - java -jar /opt/veracode/api-wrapper.jar
+          -action UploadAndScan
+          -vid "${VERACODE_API_ID}"
+          -vkey "${VERACODE_API_KEY}"
+          -appname $APP_Profile
+          -createprofile true
+          -autoscan true
+          -criticality VeryHigh
+          -filepath $Caminho_Arquivo
+          -version "${CI_JOB_ID}"
+        - sleep 2
+        - echo SCA
+        - curl -sSL https://download.sourceclear.com/ci.sh | bash -s scan --allow-dirty
+        - echo Pipeline Scan
+        - curl -O https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+        - unzip pipeline-scan-LATEST.zip pipeline-scan.jar
+        - java -jar pipeline-scan.jar
+            --veracode_api_id "${VERACODE_API_ID}"
+            --veracode_api_key "${VERACODE_API_KEY}"
+            --file "$Caminho_Arquivo"
+            --gl_issue_generation true
