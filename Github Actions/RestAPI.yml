@@ -1,0 +1,75 @@
+name: NodeJS
+
+on:
+  push:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '12.x'
+      - name: Install dependencies
+        run: npm install
+
+      - name: Empacotamento dos arquivos
+        uses: thedoctor0/zip-release@master
+        with:
+          filename: 'veracode.zip'
+          path: .
+      
+      - name: Veracode REST API
+        env:
+          VERACODE_ID: ${{ secrets.VID }} # Lembrar de criar as credenciais no Secrets
+          VERACODE_KEY: ${{ secrets.VKEY }}
+          veracodeAppName: Github Actions - ${{ github.repository }}
+          CaminhoArquivo: './veracode.zip'
+        run: |
+          aut_Veracode () {
+              URLPATH=$1
+              METHOD=$2
+
+              NONCE="$(cat /dev/random | xxd -p | head -c 32)"
+              TS="$(($(date +%s%N)/1000))"
+              encryptedNonce=$(echo "$NONCE" | xxd -r -p | openssl dgst -sha256 -mac HMAC -macopt hexkey:$VERACODE_KEY | cut -d ' ' -f 2)
+              encryptedTimestamp=$(echo -n "$TS" | openssl dgst -sha256 -mac HMAC -macopt hexkey:$encryptedNonce | cut -d ' ' -f 2)
+              signingKey=$(echo -n "vcode_request_version_1" | openssl dgst -sha256 -mac HMAC -macopt hexkey:$encryptedTimestamp | cut -d ' ' -f 2)
+              DATA="id=$VERACODE_ID&host=analysiscenter.veracode.com&url=$URLPATH&method=$METHOD"
+              signature=$(echo -n "$DATA" | openssl dgst -sha256 -mac HMAC -macopt hexkey:$signingKey | cut -d ' ' -f 2)
+              VERACODE_AUTH_HEADER="VERACODE-HMAC-SHA-256 id=$VERACODE_ID,ts=$TS,nonce=$NONCE,sig=$signature"
+          }
+
+          URLPATH=/api/5.0/getapplist.do
+          METHOD=GET
+          aut_Veracode $URLPATH $METHOD
+          curl -s -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -o applist.xml
+
+          while read -r line
+          do
+              app_name=$(echo $line | grep -Po 'app_name="\K.*?(?=")')
+              AppID=$(echo $line | grep -Po 'app_id="\K.*?(?=")')
+              if [ "$app_name" = "$veracodeAppName" ]; then 
+              break
+              fi
+          done < <(grep $veracodeAppName applist.xml)
+
+
+          URLPATH=/api/5.0/uploadfile.do
+          METHOD=POST
+          aut_Veracode $URLPATH $METHOD
+          echo "Fazendo o Upload do arquivo: $CaminhoArquivo"
+          curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "file=@$CaminhoArquivo"
+
+          URLPATH=/api/5.0/beginprescan.do
+          METHOD=POST
+          aut_Veracode $URLPATH $METHOD
+          echo "   "
+          echo "Iniciando o scan no perfil: $veracodeAppName ID: $AppID"
+          curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true"

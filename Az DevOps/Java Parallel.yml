@@ -1,0 +1,188 @@
+# Exemplo de Pipeline com equipes diferentes e analise simultanea
+# Os resultados são importados para o Boards tambem separados, utilizando uma TAG de identificação
+# Para testa, recomendo utilizar o projeto: 
+# https://github.com/IGDEXE/Verademo
+
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  veracodeAppProfile: AzDevOps.$(Build.DefinitionName)
+
+stages:
+- stage: Build
+  displayName: Build
+  jobs:
+  - job: Build
+    steps: 
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        mavenOptions: '-Xmx3072m'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.8'
+        jdkArchitectureOption: 'x64'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        goals: 'package'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'target/verademo.war'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+      
+- stage: Time1
+  displayName: Time 1
+  dependsOn: Build
+  jobs:
+  - job: SCA
+    displayName: 'Veracode SCA'
+    steps:
+    - task: CmdLine@2
+      inputs:
+        script: |
+          curl -sSL https://download.sourceclear.com/ci.sh | bash -s – scan --update-advisor --allow-dirty
+      displayName: 'Resultados SCA'
+      continueOnError: true
+
+  - job: PipelineScan
+    displayName: 'Veracode PipelineScan'
+    steps:
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Carregando arquivos'
+
+    - script: |
+        curl -O -L https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+      displayName: 'Download Pipeline Scanner'
+    - task: ExtractFiles@1
+      inputs:
+        archiveFilePatterns: 'pipeline-scan-LATEST.zip'
+        destinationFolder: '$(Build.ArtifactStagingDirectory)'
+        cleanDestinationFolder: false
+    - script: |
+          java -jar $(Build.ArtifactStagingDirectory)/pipeline-scan.jar -vid $(APIID) -vkey $(APIKEY) --file '$(System.ArtifactsDirectory)/drop/verademo.war' --issue_details true 
+      displayName: 'Veracode PipelineScan'
+      continueOnError: true
+      
+  - job: SAST
+    displayName: 'Veracode SAST'
+    steps:
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Carregando arquivos'
+      
+    - task: Veracode@3
+      inputs:
+        ConnectionDetailsSelection: 'Endpoint'
+        AnalysisService: 'Veracode'
+        veracodeAppProfile: '$(veracodeAppProfile)'
+        version: '$(build.buildNumber)'
+        filepath: '$(System.ArtifactsDirectory)/drop/verademo.war'
+        sandboxName: '$(System.StageDisplayName)'
+        createSandBox: true
+        createProfile: true
+        importResults: true
+        maximumWaitTime: '360'
+      displayName: 'Fazendo a analise'
+
+    - task: Veracode Flaw Importer@3
+      inputs:
+        ConnectionDetailsSelection: 'Endpoint'
+        AnalysisService: 'Veracode'
+        veracodeAppProfile: '$(veracodeAppProfile)'
+        sandboxName: '$(System.StageDisplayName)'
+        importType: 'All Unmitigated Flaws Violating Policy'
+        workItemType: 'Issue'
+        area: '$(system.teamProject)'
+        addCustomTag: '$(System.StageDisplayName)'
+        flawImportLimit: '1000'
+      displayName: 'Importando falhas'
+
+- stage: Time2
+  displayName: Time 2
+  dependsOn: Build
+  jobs:
+  - job: SCA
+    displayName: 'Veracode SCA'
+    steps:
+    - task: CmdLine@2
+      inputs:
+        script: |
+          curl -sSL https://download.sourceclear.com/ci.sh | bash -s – scan --update-advisor --allow-dirty
+      displayName: 'Resultados SCA'
+      continueOnError: true
+
+  - job: PipelineScan
+    displayName: 'Veracode PipelineScan'
+    steps:
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Carregando arquivos'
+
+    - script: |
+        curl -O -L https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+      displayName: 'Download Pipeline Scanner'
+    - task: ExtractFiles@1
+      inputs:
+        archiveFilePatterns: 'pipeline-scan-LATEST.zip'
+        destinationFolder: '$(Build.ArtifactStagingDirectory)'
+        cleanDestinationFolder: false
+    - script: |
+          java -jar $(Build.ArtifactStagingDirectory)/pipeline-scan.jar -vid $(APIID) -vkey $(APIKEY) --file '$(System.ArtifactsDirectory)/drop/verademo.war' --issue_details true 
+      displayName: 'Veracode PipelineScan'
+      continueOnError: true
+      
+  - job: SAST
+    displayName: 'Veracode SAST'
+    steps:
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Carregando arquivos'
+      
+    - task: Veracode@3
+      inputs:
+        ConnectionDetailsSelection: 'Endpoint'
+        AnalysisService: 'Veracode'
+        veracodeAppProfile: '$(veracodeAppProfile)'
+        version: '$(build.buildNumber)'
+        filepath: '$(System.ArtifactsDirectory)/drop/verademo.war'
+        sandboxName: '$(System.StageDisplayName)'
+        createSandBox: true
+        createProfile: true
+        importResults: true
+        maximumWaitTime: '360'
+      displayName: 'Fazendo a analise'
+
+    - task: Veracode Flaw Importer@3
+      inputs:
+        ConnectionDetailsSelection: 'Endpoint'
+        AnalysisService: 'Veracode'
+        veracodeAppProfile: '$(veracodeAppProfile)'
+        sandboxName: '$(System.StageDisplayName)'
+        importType: 'All Unmitigated Flaws Violating Policy'
+        workItemType: 'Issue'
+        area: '$(system.teamProject)'
+        addCustomTag: '$(System.StageDisplayName)'
+        flawImportLimit: '1000'
+      displayName: 'Importando falhas'

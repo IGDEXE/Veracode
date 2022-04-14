@@ -1,0 +1,76 @@
+pipelines:
+  default:
+    - step:
+        name: Build Maven
+        image: maven:3.8.1-jdk-11
+        script:
+        - mvn package
+        artifacts:
+          - target/verademo.war
+        after-script:
+          - ls -l | grep verademo
+          - echo "(Build) done!"
+    
+    - parallel:
+      - step:
+          name: Pipeline Scan
+          image: veracode/pipeline-scan
+          script:
+            - java -jar /opt/veracode/pipeline-scan.jar
+              --veracode_api_id "${VERACODE_ID}"
+              --veracode_api_key "${VERACODE_KEY}"
+              --file target/verademo.war
+              --timeout 45
+              --project_name "BitBucket-$BITBUCKET_REPO_FULL_NAME"
+
+      - step:
+          name: Pipeline Scan - Details
+          image: veracode/pipeline-scan
+          script:
+            - java -jar /opt/veracode/pipeline-scan.jar
+              --veracode_api_id "${VERACODE_ID}"
+              --veracode_api_key "${VERACODE_KEY}"
+              --file target/verademo.war
+              --timeout 45
+              --issue_details true
+              --project_name "BitBucket-$BITBUCKET_REPO_FULL_NAME"
+
+      - step:
+          name: Veracode Software Composition Analysis (SCA)
+          image: maven:3.8.1-jdk-11
+          script:
+            - curl -sSL https://download.sourceclear.com/ci.sh | bash -s scan --update-advisor
+
+      - step:
+          name: SAST - Sandbox HMG
+          image: veracode/api-wrapper-java
+          script:
+            - echo "Creating and submiting the build of application to Veracode security analysis in a sandbox enviroment"
+            - java -jar /opt/veracode/api-wrapper.jar
+              -action UploadAndScan
+              -appname BitBucket-$BITBUCKET_REPO_FULL_NAME
+              -createprofile true
+              -vid "${VERACODE_ID}"
+              -vkey "${VERACODE_KEY}"
+              -sandboxname HMG
+              -createsandbox true
+              -filepath target/verademo.war  
+              -scantimeout 30
+              -version "$BITBUCKET_BUILD_NUMBER"
+
+      - step:
+          name: SAST - PRD
+          image: veracode/api-wrapper-java
+          script:
+            - echo "Creating and submiting the build of application to Veracode security analysis"
+            - java -jar /opt/veracode/api-wrapper.jar
+              -action UploadAndScan
+              -appname BitBucket-$BITBUCKET_REPO_FULL_NAME
+              -createprofile true
+              -autoscan true
+              -criticality VeryHigh
+              -vid "${VERACODE_ID}"
+              -vkey "${VERACODE_KEY}"
+              -filepath target/verademo.war 
+              -scantimeout 30
+              -version "$BITBUCKET_BUILD_NUMBER"

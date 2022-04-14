@@ -1,0 +1,37 @@
+language: java
+​
+env:
+  - DATE = `date + "%Y-%m-%d-%H%M"`
+​
+jobs:
+  inclue:
+    - stage: "Build Java app with Maven"
+      name: "build"
+      script: mvn clean package
+​
+    - stage: "Veracode SCA - Software Composition Analisys"
+      name: "Veracode SCA - Software Composition Analisys"
+      addons:
+        srcclr: true
+    
+    - stage: "Veracode SAST - Pipeline Scan"
+      name: "Veracode SAST - Pipeline Scan"
+      before_script:
+        - curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+        - unzip -o pipeline-scan-LATEST.zip
+      script:
+        - java -jar pipeline-scan.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -f target/verademo.war --issue_details true || true
+    
+    - stage: "Veracode SAST - Sandbox Scan"
+      name: "Veracode SAST - Sandbox Scan"
+      before_script:
+        - curl -L -o VeracodeJavaAPI.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/20.12.7.3/vosp-api-wrappers-java-20.12.7.3.jar
+      script:
+        - java -jar VeracodeJavaAPI.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "TravisCi-VeraDemo" -createprofile true -filepath target/verademo.war -createsandbox true -sandboxname "HMG" -version "$TRAVIS_JOB_ID - $TRAVIS_JOB_NUMBER $DATE" -scantimeout 60 || true
+    
+    - stage: "Veracode SAST - Policy Scan"
+      name: "Veracode SAST - Policy Scan"
+      before_script:
+        - curl -L -o VeracodeJavaAPI.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/20.12.7.3/vosp-api-wrappers-java-20.12.7.3.jar
+      script:
+        - java -jar VeracodeJavaAPI.jar -vid $VERACODE_ID -vkey $VERACODE_KEY -action uploadandscan -appname "TravisCi-VeraDemo" -createprofile true -filepath target/verademo.war -version "$TRAVIS_JOB_ID - $TRAVIS_JOB_NUMBER $DATE" -scantimeout 60

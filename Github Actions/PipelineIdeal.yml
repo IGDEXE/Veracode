@@ -1,0 +1,78 @@
+name: Pipeline_Ideal
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '12.x'
+      - name: Install dependencies
+        run: npm install
+      - name: Empacotamento dos arquivos
+        uses: thedoctor0/zip-release@master
+        with:
+          filename: 'veracode.zip'
+          path: .
+      - name: Publicando Artefato
+        uses: actions/upload-artifact@v2
+        with:
+          name: pacoteVeracode
+          path: veracode.zip
+  
+  Veracode_SCA:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Veracode SCA
+        env:
+          SRCCLR_API_TOKEN: ${{ secrets.SCA }} # Lembrar de criar as credenciais no Secrets
+        run: |
+          curl -sSL 'https://download.sourceclear.com/ci.sh' | bash -s – scan --update-advisor --pull-request --allow-dirty
+
+  Veracode_SAST:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download Artefato
+        uses: actions/download-artifact@v2
+        with:
+          name: pacoteVeracode
+      - uses: veracode/veracode-uploadandscan-action@master # Faz a analise da Veracode
+        env:
+          VID: ${{ secrets.VID }} # Lembrar de criar as credenciais no Secrets
+          VKEY: ${{ secrets.VKEY }}
+          AppName: Github Actions - ${{ github.repository }}
+        with:
+          vid: '$VID'
+          vkey: '$VKEY'
+          criticality: 'VeryHigh'
+          appname: '$AppName'
+          createsandbox: true
+          filepath: 'veracode.zip'
+          deleteIncompleteScan: false
+          version: ${{ github.run_id }}
+
+  Veracode_PipelineScan:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download Artefato
+        uses: actions/download-artifact@v2
+        with:
+          name: pacoteVeracode
+      - name: Veracode Pipeline Scan
+        env:
+          VID: ${{ secrets.VID }} # Lembrar de criar as credenciais no Secrets
+          VKEY: ${{ secrets.VKEY }}
+          CaminhoArquivo: './veracode.zip'
+        run: |
+          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+          unzip pipeline-scan-LATEST.zip
+          java -jar pipeline-scan.jar -vid $VID -vkey $VKEY -f $CaminhoArquivo
+

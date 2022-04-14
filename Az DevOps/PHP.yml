@@ -1,0 +1,79 @@
+# Para testar, recomendo a utilização do projeto DVWA
+# Disponivel em: https://github.com/IGDEXE/DVWA
+
+trigger:
+- master
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  phpVersion: 7.2
+  veracodeAppProfile: AzDevOps.$(Build.DefinitionName)
+  caminhoPacote: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+
+steps:
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Agent.BuildDirectory)'
+    includeRootFolder: true
+    archiveType: 'zip'
+    archiveFile: '$(caminhoPacote)'
+    replaceExistingArchive: true
+  displayName: 'Criando pacote para analise'
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      $urlDownload = "https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip"
+      $caminhoDownload = "VeracodePipeline.zip" # Define um caminho para o arquivo de download
+      Invoke-WebRequest -Uri "$urlDownload" -OutFile "$caminhoDownload" # Faz o download
+      Expand-Archive -Path "$caminhoDownload" -DestinationPath "$(Build.ArtifactStagingDirectory)" # Descompacta o ZIP para uma pasta
+  displayName: 'Configuracao Pipeline Scan'
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: 'java -jar $(Build.ArtifactStagingDirectory)/pipeline-scan.jar -vid $(APIID) -vkey $(APIKEY) -f $(caminhoPacote)'
+  displayName: 'Veracode PipelineScan'
+  continueOnError: true
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1')) # Faz o download do script
+      srcclr scan # Executa o scan
+  displayName: 'Veracode SCA'
+  continueOnError: true
+  
+- task: Veracode@3
+  inputs:
+    ConnectionDetailsSelection: 'Credentials'
+    apiId: '$(APIID)'
+    apiKey: '$(APIKEY)'
+    veracodeAppProfile: '$(veracodeAppProfile)'
+    version: '$(build.buildNumber)'
+    filepath: '$(caminhoPacote)'
+    createSandBox: false
+    createProfile: true
+    failTheBuildIfVeracodeScanDidNotInitiate: false
+    scanStatusCheckInterval: '60'
+    importResults: true
+    failBuildOnPolicyFail: false
+  displayName: 'Veracode SAST'
+
+- task: Veracode Flaw Importer@3
+  inputs:
+    ConnectionDetailsSelection: 'Credentials'
+    apiId: '$(APIID)'
+    apiKey: '$(APIKEY)'
+    veracodeAppProfile: '$(veracodeAppProfile)'
+    sandboxName: 
+    importType: 'All Flaws'
+    workItemType: 'Issue'
+    area: '$(system.teamProject)'
+    addCustomTag: '$(build.buildNumber)'
+    flawImportLimit: '1000'
+  displayName: 'Veracode importando falhas'
