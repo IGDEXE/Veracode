@@ -1,0 +1,20 @@
+{
+    "name": "Hackazon-DAST",
+    "scans": [
+      {
+        "scan_config_request": {
+          "target_url": {
+            "url": "http://hackazon.webscantest.com/"
+          }
+        }
+      }
+    ],
+    "schedule": {
+      "duration": {
+        "length": 1,
+        "unit": "DAY"
+      },
+      "scheduled": true,
+      "now": true
+    }
+  } 
