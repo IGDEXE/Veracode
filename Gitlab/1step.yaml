@@ -12,7 +12,7 @@ Veracode:
     script:
         - >
         - echo ZIP Files
-        - zip -o $Caminho_Arquivo *
+        - zip -r $Caminho_Arquivo *
         - echo SAST
         - java -jar /opt/veracode/api-wrapper.jar
           -action UploadAndScan
@@ -34,4 +34,4 @@ Veracode:
             --veracode_api_id "${VERACODE_API_ID}"
             --veracode_api_key "${VERACODE_API_KEY}"
             --file "$Caminho_Arquivo"
-            --gl_issue_generation true
+            --issue_details true

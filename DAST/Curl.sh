@@ -1,6 +1,7 @@
 # Configuracoes de uso
 VERACODE_ID=""
 VERACODE_KEY=""
+$urlHost=api.veracode.com
 
 https://api.veracode.com/was/configservice/v1/
 
