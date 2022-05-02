@@ -3,7 +3,8 @@ VERACODE_ID=""
 VERACODE_KEY=""
 $urlHost=api.veracode.com
 
-https://api.veracode.com/was/configservice/v1/
+# URL full path
+# https://api.veracode.com/was/configservice/v1/
 
 # Funcao para autenticar
 aut_Veracode () {
