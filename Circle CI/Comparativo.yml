@@ -1,0 +1,132 @@
+version: 2.1
+jobs:
+  # Compila o projeto
+  build:
+    docker:
+      - image: cimg/openjdk:8.0.282-node
+    working_directory: ~/target
+    steps:
+      - checkout
+      - run:
+          name: Run Maven
+          command: 'mvn compile package'
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - target
+            - ./
+  
+  # SAST completo aguardando resultados
+  veracode_sast_Full:
+    docker:
+      - image: cimg/openjdk:8.0.282-node
+    steps:
+      - attach_workspace:
+          at: ./    
+      - run:
+          name: "Get the Veracode agent"
+          command: |
+            wget -q -O veracode-wrapper.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/21.2.7.4/vosp-api-wrappers-java-21.2.7.4.jar
+      - run:
+          name: "Veracode SAST"
+          command: java -jar veracode-wrapper.jar 
+              -vid $TEAM_ANALYSISCENTER_ID
+              -vkey $TEAM_ANALYSISCENTER_KEY
+              -action uploadandscan 
+              -appname "Verademo_war_circleci"
+              -createprofile true
+              -scantimeout 40
+              -version CircleCI-$CIRCLE_BUILD_NUM 
+              -filepath ./target/verademo.war
+
+  # SAST sem aguardar resultados em uma Sandbox chamada HMG
+  veracode_sast:
+    docker:
+      - image: cimg/openjdk:8.0.282-node
+    steps:
+      - attach_workspace:
+          at: ./    
+      - run:
+          name: "Get the Veracode agent"
+          command: |
+            wget -q -O veracode-wrapper.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/21.2.7.4/vosp-api-wrappers-java-21.2.7.4.jar
+      - run:
+          name: "Upload to Veracode"
+          command: java -jar veracode-wrapper.jar 
+              -vid $TEAM_ANALYSISCENTER_ID
+              -vkey $TEAM_ANALYSISCENTER_KEY
+              -action uploadandscan 
+              -appname "Verademo_war_circleci"
+              -createprofile true
+              -sandboxname "HMG"
+              -createsandbox true
+              -version CircleCI-$CIRCLE_BUILD_NUM 
+              -filepath ./target/verademo.war
+ 
+ # SCA Container
+  Veracode_sca_image_scanning:
+    docker:
+      - image: cimg/openjdk:8.0.282-node
+    steps:
+      - attach_workspace:
+          at: ./
+      - setup_remote_docker:
+          version: 19.03.13
+      - run:
+          name: "Veracode SCA Image Scanning"
+          command: |
+            curl -sSL https://download.sourceclear.com/ci.sh | bash -s scan --image cimg/openjdk:8.0.282-node || true
+ 
+ # SCA Projeto
+  Veracode_sca:
+    docker:
+      - image: cimg/openjdk:8.0.282-node
+    working_directory: ~/target
+    steps:
+      - checkout
+      - run:
+          name: "Veracode Software Composition Analysis"
+          command: |
+            curl -sSL https://download.sourceclear.com/ci.sh | bash -s – scan --update-advisor
+
+ # Veracode Pipeline Scan
+  Veracode_pipelinescan:
+    docker: 
+      - image: cimg/openjdk:8.0.282-node
+    steps:
+      - attach_workspace:
+          at: ./
+      - run:
+         name: "Download Veracode Pipeline Scan"
+         command: |
+           curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+      - run:
+         name: "Unzip Veracode Pipeline Scan"
+         command: |
+           unzip pipeline-scan-LATEST.zip
+      - run:
+         name: "Run Veracode Pipeline Scan  and create a baseline"
+         command: |
+           java -jar pipeline-scan.jar -vid $TEAM_ANALYSISCENTER_ID -vkey $TEAM_ANALYSISCENTER_KEY -f ./target/verademo.war --issue_details true 
+
+# Configura o fluxo dos scans
+workflows:
+  version: 2.1
+  build_and_scan:
+    jobs:
+      - Veracode_sca_image_scanning
+      - build:
+          requires:
+            - Veracode_sca_image_scanning
+      - Veracode_sca:
+          requires:
+            - Veracode_sca_image_scanning
+      - veracode_sast:
+          requires:
+            - build
+      - veracode_sast_Full:
+          requires:
+            - build
+      - Veracode_pipelinescan:
+          requires:
+            - build
