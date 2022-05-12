@@ -16,5 +16,9 @@
       },
       "scheduled": true,
       "now": true
-    }
+    },
+    "visibility" : {
+      "setup_type": "SEC_LEADS_AND_TEAM",
+      "team_identifiers": ["Obtenha o ID do time"]
+  }
 } 
