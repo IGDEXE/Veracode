@@ -1,7 +1,3 @@
-# Orientações
-# Vai ser criado um scan com as configurações disponiveis no arquivo config.json
-# Para obter o ID do time, utilize os comandos em: obterIdTime.sh
-
 # Configuracoes de uso
 VERACODE_ID="" 
 VERACODE_KEY=""
@@ -23,8 +19,9 @@ aut_Veracode () {
     VERACODE_AUTH_HEADER="VERACODE-HMAC-SHA-256 id=$VERACODE_ID,ts=$TS,nonce=$NONCE,sig=$signature"
 }
 
-# Inicia o DAST
-URLPATH=/was/configservice/v1/analyses
-METHOD=POST
+# Pega a lista de scans
+# Lista de scan_type validos: STATIC, DYNAMIC, MANUAL ou SCA
+URLPATH=/appsec/v1/applications?scan_type={STATIC}
+METHOD=GET
 aut_Veracode $URLPATH $METHOD
-curl -s -v -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://api.veracode.com$URLPATH" "Content-Type: application/json" -d "config.json"
+curl -s -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://api.veracode.com$URLPATH"
