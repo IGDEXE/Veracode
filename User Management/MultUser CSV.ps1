@@ -31,15 +31,25 @@ $Header = 'Nome', 'Sobrenome', 'Email', 'Squad', 'Cargo'
 # Faz a criação dos usuarios conforme lista
 $listaUsuarios = Import-Csv -Path $caminhoListaUsuarios -Header $Header -Delimiter ";"
 foreach ($usuario in $listaUsuarios) {
-    # Faz o tratamento das informações
-    $nome = $usuario.Nome
-    $sobrenome = $usuario.Sobrenome
-    $email = $usuario.Email
-    $squad = $usuario.Squad
-    $cargo = $usuario.Cargo
+    try {
+        # Faz o tratamento das informações
+        $nome = $usuario.Nome
+        $sobrenome = $usuario.Sobrenome
+        $email = $usuario.Email
+        $squad = $usuario.Squad
+        $cargo = $usuario.Cargo
 
-    # Log de retorno e criação dos usuarios
-    VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action createuser -first_name $nome -last_name $sobrenome -email_address $email -roles $roles -teams $squad -title $cargo -requires_token true
-    Write-Host "Usuario: $nome $sobrenome"
-    Write-Host "Email: $email - Squad: $squad"
+        # Log de retorno e criação dos usuarios
+        VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action createuser -firstname $nome -lastname $sobrenome -emailaddress $email -roles $roles -teams $squad -puser $cargo -requires_token true
+        Write-Host "Usuario: $nome $sobrenome"
+        Write-Host "Email: $email - Squad: $squad"
+    }
+    catch {
+         # Recebendo o erro e exibindo ele, parando a execução
+         $ErrorMessage = $_.Exception.Message # Recebe o erro
+         # Mostra uma mensagem personalizada
+         Write-Host "Erro ao criar o usuario: $nome $sobrenome"
+         Write-Host "$ErrorMessage"
+    }
+    
 }
