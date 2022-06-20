@@ -26,7 +26,7 @@ $VeracodeID = $credenciais[0]
 $VeracodeAPIKey = $credenciais[1]
 
 # Faz a configuracao do Header
-$Header = 'Nome', 'Sobrenome', 'Email', 'Squad', 'Cargo'
+$Header = 'Nome', 'Sobrenome', 'Email', 'Squad'
 
 # Faz a criação dos usuarios conforme lista
 $listaUsuarios = Import-Csv -Path $caminhoListaUsuarios -Header $Header -Delimiter ";"
@@ -37,10 +37,12 @@ foreach ($usuario in $listaUsuarios) {
         $sobrenome = $usuario.Sobrenome
         $email = $usuario.Email
         $squad = $usuario.Squad
-        $cargo = $usuario.Cargo
 
+        # Cria um novo usuario
+        VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action createuser -firstname $nome -lastname $sobrenome -emailaddress $email -roles $roles -teams $squad -requires_token true
+        # Ativa o MFA para a conta
+        VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action updateuser -username $email -requires_token true
         # Log de retorno e criação dos usuarios
-        VeracodeAPI.exe -vid $veracodeID -vkey $veracodeAPIkey -action createuser -firstname $nome -lastname $sobrenome -emailaddress $email -roles $roles -teams $squad -puser $cargo -requires_token true
         Write-Host "Usuario: $nome $sobrenome"
         Write-Host "Email: $email - Squad: $squad"
     }
