@@ -29,7 +29,7 @@ $VeracodeAPIKey = $credenciais[1]
 $Header = 'Nome', 'Sobrenome', 'Email', 'Squad'
 
 # Faz a criação dos usuarios conforme lista
-$listaUsuarios = Import-Csv -Path $caminhoListaUsuarios -Header $Header -Delimiter ";"
+$listaUsuarios = Import-Csv -Path $caminhoListaUsuarios -Header $Header -Delimiter ","
 foreach ($usuario in $listaUsuarios) {
     try {
         # Faz o tratamento das informações
