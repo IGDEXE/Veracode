@@ -41,13 +41,22 @@ do
     fi
 done < <(grep $veracodeAppName applist.xml)
 
+# Caso o ID nao exista, cria um novo
+if [ "$app_name" = "" ]; then 
+    URLPATH=/api/5.0/createapp.do
+    METHOD=POST
+    aut_Veracode $URLPATH $METHOD
+    echo "Criando perfil: $veracodeAppName"
+    curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_name=$veracodeAppName" -F "business_criticality=Very High" > $ArquivoLog 2>&1
+    AppID=$(cat $ArquivoLog | grep -Po 'app_id="\K.*?(?=")')
+fi
 
 # Faz o Upload do arquivo
 URLPATH=/api/5.0/uploadfile.do
 METHOD=POST
 aut_Veracode $URLPATH $METHOD
 echo "Fazendo o Upload do arquivo: $CaminhoArquivo"
-curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "file=@$CaminhoArquivo"
+curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "file=@$CaminhoArquivo" > $ArquivoLog 2>&1
 
 # Inicia o scan
 URLPATH=/api/5.0/beginprescan.do
@@ -55,17 +64,20 @@ METHOD=POST
 aut_Veracode $URLPATH $METHOD
 echo "   "
 echo "Iniciando o scan no perfil: $veracodeAppName ID: $AppID"
-curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true" -F "scan_all_nonfatal_top_level_modules=true"  > $ArquivoLog 2>&1
-BuildID=$(cat $ArquivoLog | grep build_id | awk -F "\"" '{print $2}')
+curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true" -F "scan_all_nonfatal_top_level_modules=true" > $ArquivoLog 2>&1
+BuildID=$(cat $ArquivoLog | grep -Po 'build_id="\K.*?(?=")')
+sleep 30
 
 # Atualiza o scan com o numero de versao
 URLPATH=/api/5.0/updatebuild.do
 METHOD=POST
 aut_Veracode $URLPATH $METHOD
 echo "Configurando versionamento: $numVersao"
-curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "version=@$numVersao"
+curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "version=$numVersao" > $ArquivoLog 2>&1
 
 # Verifica o status do scan
+echo "Aguardando o scan"
+echo "Detalhes em: $ArquivoLog"
 while true;
 do
     # Acao para pegar as informacoes do scan
@@ -73,6 +85,7 @@ do
     METHOD=GET
     aut_Veracode $URLPATH $METHOD
     curl -s -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" > $ArquivoLog 2>&1
+    echo "."
     # Valida os status
     scan_status=$(cat $ArquivoLog)
     if [[ $scan_status = *"Scan In Process"* ]];
@@ -119,9 +132,9 @@ if [[ $scan_result = *"Did Not Pass"* ]];
 then
     echo 'Application: ' $veracodeAppName '(App-ID '$AppID') - Scanname: ' $numVersao '(Build-ID '$BuildID') - Did NOT pass'
     rm -rf $ArquivoLog
-    exit 1
+    #exit 1
 else
     echo 'Application: ' $veracodeAppName '(App-ID '$AppID') - Scanname: ' $numVersao '(Build-ID '$BuildID') - Did pass'
     rm -rf $ArquivoLog
-    exit 0
+    #exit 0
 fi
