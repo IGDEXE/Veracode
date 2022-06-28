@@ -91,28 +91,27 @@ do
     if [[ $scan_status = *"Scan In Process"* ]];
     then
         echo ""
-        echo '[INFO] scan in process ...'
-        echo '[INFO] wait 2 more minutes ...'
+        echo 'Scan em andamento ...'
+        echo "Aguardando $SCAN_SLEEP_TIME segundos..."
         sleep $SCAN_SLEEP_TIME
     elif [[ $scan_status = *"Submitted to Engine"* ]];
     then
         echo ""
-        echo '[INFO] Application submitted to scan engine'
-        echo '[INFO] Scan will start momentarily'
-        echo '[INFO] wait 1 more mintue'
+        echo 'Scan iniciando...'
+        echo "Aguardando $PRESCAN_SLEEP_TIME segundos..."
         sleep $PRESCAN_SLEEP_TIME
     elif [[ $scan_status = *"Pre-Scan Submitted"* ]];
     then
         echo ""
-        echo '[INFO] pre-scan still running ...'
-        echo '[INFO] wait 1 more minute ...'
+        echo 'Fazendo o Pre-Scan...'
+        echo "Aguardando $PRESCAN_SLEEP_TIME segundos..."
         sleep $PRESCAN_SLEEP_TIME
     else
         scan_finished=$(cat $ArquivoLog)
         if [[ $scan_finished = *"Results Ready"* ]];
         then
             echo ""
-            echo '[INFO] scan has finished'
+            echo 'Scan finalizado'
             rm -rf $ArquivoLog
             sleep $SCAN_SLEEP_TIME
             break;
@@ -121,7 +120,7 @@ do
 done
 
 # Define a quebra de pipeline
-echo '[INFO] Scan results'
+echo 'Preparando resultados'
 URLPATH=/api/4.0/summaryreport.do
 METHOD=GET
 aut_Veracode $URLPATH $METHOD
