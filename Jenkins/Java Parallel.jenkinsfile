@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+    
+    environment {
+        VeracodeID = ''
+        VeracodeKey    = ''
+        VeracodeProfile = 'Jenkins.Java'
+        SRCCLR_API_TOKEN = ''
+        CaminhoPacote = 'target/verademo.war'
+    }
+
+    stages {
+        stage('Git Clone') {
+            steps {
+                git "https://github.com/IGDEXE/Verademo"
+            }
+        }
+        stage('Build') {
+            parallel {
+                stage('MVN'){
+                    steps {
+                        sh 'mvn -B -DskipTests clean package'
+                    }
+                }
+                stage('SCA'){
+                    steps {
+                        sh 'curl -sSL https://download.sourceclear.com/ci.sh | bash -s scan --allow-dirty'
+                    }
+                }
+            }
+        }
+        stage('Veracode SAST') {
+            parallel {
+                stage('Wrapper'){
+                    steps {
+                        sh 'curl -o veracode-wrapper.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/21.2.7.4/vosp-api-wrappers-java-21.2.7.4.jar'
+                        sh 'java -jar veracode-wrapper.jar -vid ${VeracodeID} -vkey ${VeracodeKey} -action uploadandscan -appname ${VeracodeProfile} -createprofile true  -version $(date +%H%M%s%d%m%y) -filepath ${CaminhoPacote}'
+                    }
+                }
+                stage('Pipeline Scan'){
+                    steps {
+                        sh 'curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip'
+                        unzip zipFile: 'pipeline-scan-LATEST.zip', dir: ''
+                        sh 'java -jar pipeline-scan.jar -vid ${VeracodeID} -vkey ${VeracodeKey} -f ${CaminhoPacote} --issue_details true '
+                    }
+                }
+            }
+        }
+    }
+}

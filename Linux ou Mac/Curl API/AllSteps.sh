@@ -5,8 +5,7 @@ VERACODE_ID=""
 VERACODE_KEY=""
 numVersao=$(date +%H%M%s%d%m%y)
 ArquivoLog=$veracodeAppName'-'$numVersao'.txt'
-PRESCAN_SLEEP_TIME=40
-SCAN_SLEEP_TIME=60
+TempoEspera=60s
 
 # Funcao para autenticar
 aut_Veracode () {
@@ -42,7 +41,7 @@ do
 done < <(grep $veracodeAppName applist.xml)
 
 # Caso o ID nao exista, cria um novo
-if [ "$app_name" = "" ]; then 
+if [ "$AppID" = "" ]; then 
     URLPATH=/api/5.0/createapp.do
     METHOD=POST
     aut_Veracode $URLPATH $METHOD
@@ -66,7 +65,9 @@ echo "   "
 echo "Iniciando o scan no perfil: $veracodeAppName ID: $AppID"
 curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true" -F "scan_all_nonfatal_top_level_modules=true" > $ArquivoLog 2>&1
 BuildID=$(cat $ArquivoLog | grep -Po 'build_id="\K.*?(?=")')
-sleep 30
+IFS=' '
+read -a BuildID <<< $BuildID
+sleep 30s
 
 # Atualiza o scan com o numero de versao
 URLPATH=/api/5.0/updatebuild.do
@@ -80,32 +81,27 @@ echo "Aguardando o scan"
 echo "Detalhes em: $ArquivoLog"
 while true;
 do
+    echo "Aguardando $TempoEspera segundos..."
+    sleep $TempoEspera
     # Acao para pegar as informacoes do scan
     URLPATH=/api/5.0/getprescanresults.do
     METHOD=GET
     aut_Veracode $URLPATH $METHOD
     curl -s -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" > $ArquivoLog 2>&1
-    echo "."
     # Valida os status
-    scan_status=$(cat $ArquivoLog)
-    if [[ $scan_status = *"Scan In Process"* ]];
+    StatusScan=$(cat $ArquivoLog)
+    if [[ $StatusScan = *"Scan In Process"* ]];
     then
         echo ""
         echo 'Scan em andamento ...'
-        echo "Aguardando $SCAN_SLEEP_TIME segundos..."
-        sleep $SCAN_SLEEP_TIME
-    elif [[ $scan_status = *"Submitted to Engine"* ]];
+    elif [[ $StatusScan = *"Submitted to Engine"* ]];
     then
         echo ""
         echo 'Scan iniciando...'
-        echo "Aguardando $PRESCAN_SLEEP_TIME segundos..."
-        sleep $PRESCAN_SLEEP_TIME
-    elif [[ $scan_status = *"Pre-Scan Submitted"* ]];
+    elif [[ $StatusScan = *"Pre-Scan Submitted"* ]];
     then
         echo ""
         echo 'Fazendo o Pre-Scan...'
-        echo "Aguardando $PRESCAN_SLEEP_TIME segundos..."
-        sleep $PRESCAN_SLEEP_TIME
     else
         scan_finished=$(cat $ArquivoLog)
         if [[ $scan_finished = *"Results Ready"* ]];
@@ -113,7 +109,6 @@ do
             echo ""
             echo 'Scan finalizado'
             rm -rf $ArquivoLog
-            sleep $SCAN_SLEEP_TIME
             break;
         fi
     fi

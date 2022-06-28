@@ -4,16 +4,22 @@ pipeline {
     environment {
         VeracodeID = ''
         VeracodeKey    = ''
-        VeracodeProfile = 'Jenkins.Linux'
+        VeracodeProfile = 'Jenkins.Java'
         SRCCLR_API_TOKEN = ''
-        CaminhoPacote = 'pacoteVeracode.zip'
+        CaminhoPacote = 'target/verademo.war'
     }
 
     stages {
-        stage('Build and Package') {
+        stage('Git Clone') {
             steps {
-                //Processo atual de build
+                git "https://github.com/IGDEXE/Verademo"
             }
+        }
+        stage('Build') {
+            steps {
+                sh 'mvn -B -DskipTests clean package'
+            }
+        }
         stage('SAST Upload') {
             steps {
                 sh 'curl -o veracode-wrapper.jar https://repo1.maven.org/maven2/com/veracode/vosp/api/wrappers/vosp-api-wrappers-java/21.2.7.4/vosp-api-wrappers-java-21.2.7.4.jar'
