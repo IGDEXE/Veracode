@@ -75,6 +75,9 @@ if [ "$BuildID" = "" ]; then
     echo "Existe outro scan em andamento"
     exit 1
 fi
+# Configura a exibicao do valor BuildID
+IFS=' '
+read -a BuildID <<< $BuildID
 sleep 30
 
 # Verifica o status do scan
