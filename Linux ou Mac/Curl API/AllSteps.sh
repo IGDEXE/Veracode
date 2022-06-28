@@ -70,10 +70,16 @@ echo "   "
 echo "Iniciando o scan no perfil: $veracodeAppName ID: $AppID"
 curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true" -F "scan_all_nonfatal_top_level_modules=true" > $ArquivoLog 2>&1
 BuildID=$(cat $ArquivoLog | grep -Po 'build_id="\K.*?(?=")')
+if [ "$BuildID" = "" ]; then
+    echo "Ocorreu um erro ao obter o Build ID"
+    echo "Existe outro scan em andamento"
+    exit 1
+fi
 sleep 30
 
 # Verifica o status do scan
 echo "Scan em andamento"
+echo "ID Scan: $BuildID - Versão: $numVersao"
 echo "Aguardando $TempoEspera em cada ciclo..."
 echo "Detalhes em: $ArquivoLog"
 while true;
@@ -90,13 +96,11 @@ do
     scan_result=$(cat $ArquivoLog | grep -Po 'policy_compliance_status="\K.*?(?=")')
     if [[ $scan_result = "Did Not Pass" ]];
     then
-        echo "Application: $veracodeAppName (App-ID $AppID) - Scanname: $numVersao (Build-ID $BuildID)"
         echo 'Não passou na politica'
         #break;
         exit 1
     elif [[ $scan_result = "Passed" ]];
     then
-        echo "Application: $veracodeAppName (App-ID $AppID) - Scanname: $numVersao (Build-ID $BuildID)"
         echo 'Passou na politica'
         #break;
         exit 0
