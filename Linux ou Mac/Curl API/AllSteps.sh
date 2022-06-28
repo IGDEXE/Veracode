@@ -41,13 +41,18 @@ do
 done < <(grep $veracodeAppName applist.xml)
 
 # Caso o ID nao exista, cria um novo
-if [ "$AppID" = "" ]; then 
+if [ "$AppID" = "" ]; then
     URLPATH=/api/5.0/createapp.do
     METHOD=POST
     aut_Veracode $URLPATH $METHOD
     echo "Criando perfil: $veracodeAppName"
     curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_name=$veracodeAppName" -F "business_criticality=Very High" > $ArquivoLog 2>&1
     AppID=$(cat $ArquivoLog | grep -Po 'app_id="\K.*?(?=")')
+    if [ "$AppID" = "" ]; then
+        echo "Ocorreu um erro ao criar o perfil"
+        echo "Tente fazer a criação no portal"
+        exit 1
+    fi
 fi
 
 # Faz o Upload do arquivo
@@ -65,70 +70,35 @@ echo "   "
 echo "Iniciando o scan no perfil: $veracodeAppName ID: $AppID"
 curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "auto_scan=true" -F "scan_all_nonfatal_top_level_modules=true" > $ArquivoLog 2>&1
 BuildID=$(cat $ArquivoLog | grep -Po 'build_id="\K.*?(?=")')
-IFS=' '
-read -a BuildID <<< $BuildID
-sleep 30s
-
-# Atualiza o scan com o numero de versao
-URLPATH=/api/5.0/updatebuild.do
-METHOD=POST
-aut_Veracode $URLPATH $METHOD
-echo "Configurando versionamento: $numVersao"
-curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "version=$numVersao" > $ArquivoLog 2>&1
+sleep 30
 
 # Verifica o status do scan
-echo "Aguardando o scan"
+echo "Scan em andamento"
+echo "Aguardando $TempoEspera em cada ciclo..."
 echo "Detalhes em: $ArquivoLog"
 while true;
 do
-    echo "Aguardando $TempoEspera segundos..."
     sleep $TempoEspera
+    echo '.'
     # Acao para pegar as informacoes do scan
-    URLPATH=/api/5.0/getprescanresults.do
-    METHOD=GET
+    # Atualiza o scan com o numero de versao
+    URLPATH=/api/5.0/updatebuild.do
+    METHOD=POST
     aut_Veracode $URLPATH $METHOD
-    curl -s -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" > $ArquivoLog 2>&1
+    curl -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "app_id=$AppID" -F "version=$numVersao" > $ArquivoLog 2>&1
     # Valida os status
-    StatusScan=$(cat $ArquivoLog)
-    if [[ $StatusScan = *"Scan In Process"* ]];
+    scan_result=$(cat $ArquivoLog | grep -Po 'policy_compliance_status="\K.*?(?=")')
+    if [[ $scan_result = "Did Not Pass" ]];
     then
-        echo ""
-        echo 'Scan em andamento ...'
-    elif [[ $StatusScan = *"Submitted to Engine"* ]];
+        echo "Application: $veracodeAppName (App-ID $AppID) - Scanname: $numVersao (Build-ID $BuildID)"
+        echo 'Não passou na politica'
+        #break;
+        exit 1
+    elif [[ $scan_result = "Passed" ]];
     then
-        echo ""
-        echo 'Scan iniciando...'
-    elif [[ $StatusScan = *"Pre-Scan Submitted"* ]];
-    then
-        echo ""
-        echo 'Fazendo o Pre-Scan...'
-    else
-        scan_finished=$(cat $ArquivoLog)
-        if [[ $scan_finished = *"Results Ready"* ]];
-        then
-            echo ""
-            echo 'Scan finalizado'
-            rm -rf $ArquivoLog
-            break;
-        fi
+        echo "Application: $veracodeAppName (App-ID $AppID) - Scanname: $numVersao (Build-ID $BuildID)"
+        echo 'Passou na politica'
+        #break;
+        exit 0
     fi
 done
-
-# Define a quebra de pipeline
-echo 'Preparando resultados'
-URLPATH=/api/4.0/summaryreport.do
-METHOD=GET
-aut_Veracode $URLPATH $METHOD
-curl -s -X $METHOD -H "Authorization: $VERACODE_AUTH_HEADER" "https://analysiscenter.veracode.com$URLPATH" -F "build_id=$BuildID" > $ArquivoLog 2>&1
-scan_result=$(cat $ArquivoLog)
-
-if [[ $scan_result = *"Did Not Pass"* ]];
-then
-    echo 'Application: ' $veracodeAppName '(App-ID '$AppID') - Scanname: ' $numVersao '(Build-ID '$BuildID') - Did NOT pass'
-    rm -rf $ArquivoLog
-    #exit 1
-else
-    echo 'Application: ' $veracodeAppName '(App-ID '$AppID') - Scanname: ' $numVersao '(Build-ID '$BuildID') - Did pass'
-    rm -rf $ArquivoLog
-    #exit 0
-fi
