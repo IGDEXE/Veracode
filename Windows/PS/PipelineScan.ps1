@@ -6,7 +6,7 @@ param (
 # Função para pegar as credenciais com base no arquivo de configuração do IDE Scan/Greenlight
 function Get-VeracodeCredentials {
     # Pega as credenciais do arquivo da Veracode
-    $arquivoCredenciais = Get-Content -Path "C:\Users\$env:UserName\.veracode\credentials"
+    $arquivoCredenciais = Get-Content -Path "$env:userprofile\.veracode\credentials"
     # Recebe os valores
     $VeracodeID = $arquivoCredenciais[1].Replace("veracode_api_key_id = ","")
     $APIKey = $arquivoCredenciais[2].Replace("veracode_api_key_secret = ","")
@@ -17,9 +17,9 @@ function Get-VeracodeCredentials {
 
 function Valida-PipeScan {
     # Pasta padrao
-    $pastaferramenta  = "$Env:Programfiles/Veracode/PipeScan"
+    $pastaferramenta  = "$Env:Programfiles\Veracode\PipeScan"
     # Instalador
-    $caminhoInstalador = "$env:userprofile/Downloads/pipescan.zip"
+    $caminhoInstalador = "$env:userprofile\Downloads\pipescan.zip"
     # Link para fazer o download da ferramenta, conforme documentação
     $urlPipeScan = "https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip" # Link para fazer o download da ferramenta, conforme documentação
 
@@ -32,11 +32,10 @@ function Valida-PipeScan {
             Invoke-WebRequest -Uri "$urlPipeScan" -OutFile "$caminhoInstalador"
             # Extrai o arquivo
             Expand-Archive -Path "$caminhoInstalador" -DestinationPath "$pastaferramenta"
-            # Adiciona o EXE ao caminho do Path do sistema
-            Write-Host "Adicionando ao Path do sistema"
-            [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$pastaferramenta")
         }
-        # Caso ela ja esteja instalada, nada é feito
+        # Adiciona ao caminho do Path do sistema
+        Write-Host "Adicionando ao Path do sistema"
+        [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$pastaferramenta/pipeline-scan.jar")
     }
     catch {
         $ErrorMessage = $_.Exception.Message # Recebe o erro
@@ -56,7 +55,7 @@ try {
     Valida-PipeScan
 
     # Faz o Scan
-    java -jar "pipeline-scan.jar" -vid $veracodeID -vkey $veracodeAPIkey -f $caminhoarquivo
+    java -jar "pipeline-scan.jar" -vid $veracodeID -vkey $veracodeAPIkey -f $caminhoarquivo --issue_details true
 }
 catch {
     $ErrorMessage = $_.Exception.Message # Recebe o erro
