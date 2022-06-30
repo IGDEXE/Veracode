@@ -19,7 +19,7 @@ function Valida-PipeScan {
     # Pasta padrao
     $pastaferramenta  = "$Env:Programfiles/Veracode/PipeScan"
     # Instalador
-    $caminhoInstalador = "$env:userprofile/Download/pipescan.zip"
+    $caminhoInstalador = "$env:userprofile/Downloads/pipescan.zip"
     # Link para fazer o download da ferramenta, conforme documentação
     $urlPipeScan = "https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip" # Link para fazer o download da ferramenta, conforme documentação
 
