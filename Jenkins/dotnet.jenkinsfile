@@ -4,20 +4,32 @@ pipeline {
     environment {
         VeracodeID = ''
         VeracodeKey    = ''
-        VeracodeProfile = 'Jenkins.Java'
+        VeracodeProfile = 'Jenkins.Dotnet'
         SRCCLR_API_TOKEN = ''
-        CaminhoPacote = 'target/verademo.war'
+        CaminhoPacote = 'pacoteVeracode.zip'
     }
 
     stages {
+        stage('Clean') {
+            steps {
+                sh 'rm -rf pacoteVeracode.zip'
+                sh 'rm -rf veracode-wrapper.jar'
+                sh 'rm -rf pipeline-scan.jar'
+            }
+        }
         stage('Git Clone') {
             steps {
-                git "https://github.com/IGDEXE/Verademo"
+                git "https://github.com/IGDEXE/verademoDotNet"
             }
         }
         stage('Build') {
             steps {
-                sh 'mvn -B -DskipTests clean package'
+                sh 'dotnet **/*.sln'
+            }
+        }
+        stage('Archive') {
+            steps {
+                sh "zip -r ${CaminhoPacote} . '*.pdb' '*.dll'"
             }
         }
         stage('SAST Upload') {
