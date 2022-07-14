@@ -1,0 +1,27 @@
+name: Veracode Dynamc Analysis Demo
+on: workflow_dispatch
+    
+jobs:
+  dynamc_analysis:
+    name: Dynamc Analysis
+    runs-on: ubuntu-latest
+    container:
+      image: veracode/api-signing
+      options: --user root
+    permissions:
+      id-token: write
+      contents: write      
+    steps:
+        
+    - name: Check out main branch
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ GITHUB.REPOSITORY }}
+        token: ${{ secrets.GIT_TOKEN_WF }}
+      
+    - name: DAST
+      env:
+        VERACODE_API_KEY_ID: ${{ secrets.VID }}
+        VERACODE_API_KEY_SECRET: ${{ secrets.VKEY }}
+      run: |
+        http --auth-type=veracode_hmac POST "https://api.veracode.com/was/configservice/v1/analyses" < input.json

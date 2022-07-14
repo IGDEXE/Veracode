@@ -1,0 +1,29 @@
+{
+    "name": "DAST Login",
+    "scans": [
+      {
+        "scan_config_request": {
+          "target_url": {
+            "url": "Sua URL",
+            "http_and_https": true
+          }
+        },
+        "auth_configuration": {
+          "authentications": {
+            "AUTO": {
+              "username": "Seu usuario",
+              "password": "Sua senha",
+              "authtype": "AUTO"
+            }
+          }
+        }
+      }
+    ],
+    "schedule": {
+      "now": true,
+      "duration": {
+        "length": 1,
+        "unit": "DAY"
+      }
+    }
+  }

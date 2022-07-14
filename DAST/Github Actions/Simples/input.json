@@ -1,0 +1,20 @@
+{
+    "name": "Basic DAST",
+    "scans": [
+      {
+        "scan_config_request": {
+          "target_url": {
+            "url": "Sua URL",
+            "http_and_https": true
+          }
+        }
+      }
+    ],
+    "schedule": {
+      "now": true,
+      "duration": {
+        "length": 1,
+        "unit": "DAY"
+      }
+    }
+  }
